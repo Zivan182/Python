@@ -2,7 +2,7 @@ from random import *
 from variables import *
 
 
-def maze_generator(n,m):
+def generate_maze(n,m):
     field = [[0 for i in range(m)] for i in range(n)]
     walls = [[[False, False] for i in range(m)] for i in range(n)]
     for i in range(n):
