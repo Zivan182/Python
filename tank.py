@@ -6,7 +6,7 @@ from geometry import *
 from variables import *
 
 
-class tank():
+class Tank():
     def __init__(self, canvas, points, color):
         self.canvas = canvas
         self.points = points
@@ -15,13 +15,11 @@ class tank():
         self.id = self.canvas.create_polygon(self.points, fill=color, outline=OUTLINE1)
         self.bullets = 0
         self.pressed = {'forward': False, 'left': False, 'backward': False, 'right': False, 'fire': False}
+        self.stopped = False
 
 
     def update(self):
-        self.A = self.points[0]
-        self.B = self.points[1]
-        self.C = self.points[2]
-        self.D = self.points[3]
+        self.A, self.B, self.C, self.D = self.points
         self.O = [(self.A[0] + self.C[0]) / 2, (self.A[1] + self.C[1]) / 2]
         self.muzzle = [(self.A[0] + self.B[0]) / 2, (self.A[1] + self.B[1]) / 2]
         self.dx = (self.muzzle[0] - self.O[0]) * SMALL_CONSTANT
@@ -32,43 +30,37 @@ class tank():
         for v_wall in vertical_walls:
             begin = [v_wall.x, v_wall.y]
             end = [v_wall.x, v_wall.y + v_wall.len]
-            xab, yab = intersect(self.A, self.B, begin, end)
-            zdvc, wegw = intersect(self.B, self.C, begin, end)
-            xcd, ycd = intersect(self.C, self.D, begin, end)
-            xda, yda = intersect(self.D, self.A, begin, end)
-            if (begin[1] <= yab <= end[1] and (self.A[0] - xab)*(self.B[0]-xab)<=0) or \
-                    (begin[1] <= wegw <= end[1] and (self.B[0] - zdvc)*(self.C[0]-zdvc)<=0) or \
-                    (begin[1] <= ycd <= end[1] and (self.C[0] - xcd)*(self.D[0]-xcd)<=0) or \
-                    (begin[1] <= yda <= end[1] and (self.D[0] - xda)*(self.A[0]-xda)<=0):
+            if intersect_of_segments(self.A, self.B, begin, end) or \
+                    intersect_of_segments(self.B, self.C, begin, end) or \
+                    intersect_of_segments(self.C, self.D, begin, end) or \
+                    intersect_of_segments(self.D, self.A, begin, end):
                 return v_wall
         for h_wall in horizontal_walls:
             begin = [h_wall.x, h_wall.y]
             end = [h_wall.x + h_wall.len, h_wall.y]
-            xab, yab = intersect(self.A, self.B, begin, end)
-            zdvs, wegw = intersect(self.B, self.C, begin, end)
-            xcd, ycd = intersect(self.C, self.D, begin, end)
-            xda, yda = intersect(self.D, self.A, begin, end)
-            if (begin[0] <= xab <= end[0] and (self.A[1] - yab) * (self.B[1] - yab) <= 0) or \
-                    (begin[0] <= zdvs <= end[0] and (self.B[1] - wegw) * (self.C[1] - wegw) <= 0) or \
-                    (begin[0] <= xcd <= end[0] and (self.C[1] - ycd) * (self.D[1] - ycd) <= 0) or \
-                    (begin[0] <= xda <= end[0] and (self.D[1] - yda) * (self.A[1] - yda) <= 0):
+            if intersect_of_segments(self.A, self.B, begin, end) or \
+                    intersect_of_segments(self.B, self.C, begin, end) or \
+                    intersect_of_segments(self.C, self.D, begin, end) or \
+                    intersect_of_segments(self.D, self.A, begin, end):
                 return h_wall
         return False
 
 
+    def shift(self, dx, dy):
+        for i in range(4):
+            self.points[i][0] += dx
+            self.points[i][1] += dy
+
+
     def move_forward(self):
         self.canvas.move(self.id, self.dx, self.dy)
-        for i in range(4):
-            self.points[i][0] += self.dx
-            self.points[i][1] += self.dy
+        self.shift(self.dx, self.dy)
         self.update()
 
 
     def move_backward(self):
         self.canvas.move(self.id, -self.dx, -self.dy)
-        for i in range(4):
-            self.points[i][0] -= self.dx
-            self.points[i][1] -= self.dy
+        self.shift(-self.dx, -self.dy)
         self.update()
 
 
@@ -96,17 +88,17 @@ class tank():
         self.update()
 
 
-    def bullet_delete(self):
+    def delete_bullet(self):
         self.bullets -= 1
 
 
     def fire(self):
         if self.bullets < 5:
-            tank_bullet = bullet(self.canvas, self.muzzle[0] + STEP * self.dx, self.muzzle[1] + STEP * self.dy, 2 * self.dx,
-                                 2 * self.dy)
+            tank_bullet = Bullet(self.canvas, self.muzzle[0] + STEP * self.dx, self.muzzle[1] + STEP * self.dy,
+                                 2 * self.dx, 2 * self.dy)
             self.bullets += 1
             bullets.append(tank_bullet)
-            self.canvas.after(10000, self.bullet_delete)
+            self.canvas.after(10000, self.delete_bullet)
 
 
     def died(self):
@@ -164,26 +156,27 @@ class tank():
 
 
     def move(self):
-        if (self.pressed['forward']):
-            self.move_forward()
-            if self.collision():
-                self.move_backward()
-        if (self.pressed['backward']):
-            self.move_backward()
-            if self.collision():
+        if not self.stopped:
+            if (self.pressed['forward']):
                 self.move_forward()
-        if (self.pressed['left']):
-            self.rotate_left()
-            w = self.collision()
-            if w is not False:
-                self.rotate_right()
-                w.draw()
-        if (self.pressed['right']):
-            self.rotate_right()
-            w = self.collision()
-            if w is not False:
+                if self.collision():
+                    self.move_backward()
+            if (self.pressed['backward']):
+                self.move_backward()
+                if self.collision():
+                    self.move_forward()
+            if (self.pressed['left']):
                 self.rotate_left()
-                w.draw()
+                w = self.collision()
+                if w is not False:
+                    self.rotate_right()
+                    w.draw()
+            if (self.pressed['right']):
+                self.rotate_right()
+                w = self.collision()
+                if w is not False:
+                    self.rotate_left()
+                    w.draw()
         self.canvas.after(30, self.move)
 
 
@@ -193,9 +186,9 @@ class tank():
         self.died()
 
 
-class tank1(tank):
+class Tank1(Tank):
     def __init__(self, canvas, points, color=TANK_COLOR1):
-        tank.__init__(self, canvas, points, color)
+        Tank.__init__(self, canvas, points, color)
         self.canvas.bind_all('<KeyPress-w>', self.press_forward)
         self.canvas.bind_all('<KeyRelease-w>', self.release_forward)
         self.canvas.bind_all('<KeyPress-a>', self.press_left)
@@ -208,9 +201,9 @@ class tank1(tank):
         self.canvas.bind_all('<KeyRelease-r>', self.release_fire)
 
 
-class tank2(tank):
+class Tank2(Tank):
     def __init__(self, canvas, points, color=TANK_COLOR2):
-        tank.__init__(self, canvas, points, color)
+        Tank.__init__(self, canvas, points, color)
         self.canvas.bind_all('<KeyPress-Up>', self.press_forward)
         self.canvas.bind_all('<KeyRelease-Up>', self.release_forward)
         self.canvas.bind_all('<KeyPress-Left>', self.press_left)
