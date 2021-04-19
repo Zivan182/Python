@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from variables import *
 
 class Wall():
@@ -8,7 +9,7 @@ class Wall():
         self.len = len
         self.color = color
 
-
+    @abstractmethod
     def draw(self):
         pass
 
