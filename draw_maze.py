@@ -1,9 +1,11 @@
 from generate_maze import *
 from wall import *
-from variables import *
+from constants import *
 
 
 def draw_maze (canvas):
+    """рисует стены лабиринта"""
+
     maze_walls = generate_maze(N, M)
     for i in range(N):
         j = 1
