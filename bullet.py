@@ -1,10 +1,42 @@
 import math
 from wall import *
 from geometry import *
-from variables import *
+from constants import *
 
 
 class Bullet():
+    """ Класс Bullet - пуля
+
+    Attributes
+    ----------
+    x, y : float
+        координаты центра
+    r : float, optional
+        радиус
+    dx, dy : float
+        смещение пули по осям Ox/Oy при движении
+    color : str, optional
+        цвет пули
+    live : bool
+        индикатор жизни пули
+    stopped : bool
+        индикатор движения пули
+
+    Methods
+    -------
+    collision()
+        проверяет столкновения пули со стенами
+    stop()
+        вызывается через 10s после создания пули;
+        устанавливает False значением индикатора live, переносит пулю за пределы поля
+    move()
+        вызывается при создании пули;
+        вызывает метод collision();
+        производит движение пули в соответствии с индикатором live;
+        обновляет координаты центра;
+        вызывает себя снова через 30ms
+    """
+
     def __init__(self, canvas, x, y, dx, dy, r = BULLET_R, color = BULLET_COLOR):
         self.canvas = canvas
         self.x = x
@@ -22,6 +54,8 @@ class Bullet():
 
 
     def collision(self):
+        """проверяет столкновения пули со стенами"""
+
         for v_wall in vertical_walls:
             if (abs(v_wall.x - self.x) <= self.r + 2) and (v_wall.y <= self.y <= v_wall.y + v_wall.len):
                 self.dx = -self.dx
@@ -39,11 +73,22 @@ class Bullet():
 
 
     def stop(self):
+        """вызывается через 10s после создания пули;
+        устанавливает False значением индикатора live, переносит пулю за пределы поля
+        """
+
         self.live = False
         self.canvas.move(self.id, 2000, 2000)
 
 
     def move(self):
+        """вызывается при создании пули;
+        вызывает метод collision();
+        производит движение пули в соответствии с индикатором live;
+        обновляет координаты центра;
+        вызывает себя снова через 30ms
+        """
+
         if self.live and not self.stopped:
             self.collision()
             self.canvas.move(self.id, self.dx, self.dy)
