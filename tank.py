@@ -3,10 +3,72 @@ import time
 from wall import *
 from bullet import *
 from geometry import *
-from variables import *
+from constants import *
 
 
 class Tank():
+    """ Класс Tank - танк
+
+    Attributes
+    ----------
+    points : list
+        список вершин танка
+    A,B,C,D : list
+        вершины танка
+    O : list
+        центр танка
+    muzzle : list
+        "дуло" танка (место, откуда вылетает пуля)
+    dx, dy : float
+        смещение танка по осям Ox/Oy при движении
+    color : str, optional
+        цвет танка
+    bullets : int
+        количество выпущенных пуль в данный момент
+    pressed : list
+        список индикаторов нажатия клавиш
+    stopped : bool
+        индикатор движения танка
+
+    Methods
+    -------
+    update()
+        обновляет координаты вершин танка, координаты центра, координаты дула, значения dx и dy
+    collision()
+        проверяет столкновения танка со стенами
+    shift(dx, dy)
+        производит смещение танка на указанные величины dx и dy
+    move_forward()
+        производит движение танка вперед
+    move_backward()
+        производит движение танка назад
+    rotate_left()
+        производит поворот танка налево
+    rotate_right()
+        производит поворот танка направо
+    delete_bullet()
+        уменьшает количество выпущенных пуль на 1, когда пуля исчезает
+    fire()
+        производит выстрел, уничтожает пулю через 10s
+    died()
+        проверяет столкновения танка с пулей каждые 30ms;
+        в случае столкновения игра заканчивается
+    press_<...>()
+        устанавливает индикатор того, что соответственная клавиша нажата
+    release_<...>()
+        устанавливает индикатор того, что соответственная клавиша не нажата
+    f()
+        запускает метод fire(), если нажата клавиша стрельбы;
+        вызывает себя снова через 30ms
+    move()
+        запускает движение и поворот танка, если нажаты соответственные клавиши;
+        производит отрисовку танка;
+        вызывает себя снова через 30ms
+    start()
+        вызывается при создании танка;
+        запускает методы f(), move(), died()
+    """
+
     def __init__(self, canvas, points, color):
         self.canvas = canvas
         self.points = points
@@ -16,9 +78,12 @@ class Tank():
         self.bullets = 0
         self.pressed = {'forward': False, 'left': False, 'backward': False, 'right': False, 'fire': False}
         self.stopped = False
+        self.start()
 
 
     def update(self):
+        """обновляет координаты вершин танка, координаты центра, координаты дула, значения dx и dy"""
+
         self.A, self.B, self.C, self.D = self.points
         self.O = [(self.A[0] + self.C[0]) / 2, (self.A[1] + self.C[1]) / 2]
         self.muzzle = [(self.A[0] + self.B[0]) / 2, (self.A[1] + self.B[1]) / 2]
@@ -27,6 +92,8 @@ class Tank():
 
 
     def collision(self):
+        """проверяет столкновения танка со стенами"""
+
         for v_wall in vertical_walls:
             begin = [v_wall.x, v_wall.y]
             end = [v_wall.x, v_wall.y + v_wall.len]
@@ -47,24 +114,44 @@ class Tank():
 
 
     def shift(self, dx, dy):
+        """производит смещение танка на указанные величины dx и dy
+
+        Parameters
+        ----------
+        dx, dy : float
+            смещение танка по оси Ox/Oy
+        """
+
         for i in range(4):
             self.points[i][0] += dx
             self.points[i][1] += dy
 
 
     def move_forward(self):
+        """производит движение танка вперед"""
+
         self.canvas.move(self.id, self.dx, self.dy)
         self.shift(self.dx, self.dy)
         self.update()
 
 
     def move_backward(self):
+        """производит движение танка назад"""
+
         self.canvas.move(self.id, -self.dx, -self.dy)
         self.shift(-self.dx, -self.dy)
         self.update()
 
 
     def rotate_left(self, angle=ANGLE):
+        """производит поворот танка налево
+
+        Parameters
+        ----------
+        angle : float, optional
+            угол поворота в радианах
+        """
+
         s = math.sin(angle)
         c = math.cos(angle)
         self.canvas.create_polygon(self.points, fill=BG_COLOR, outline=BG_COLOR)
@@ -77,6 +164,14 @@ class Tank():
 
 
     def rotate_right(self, angle=ANGLE):
+        """производит поворот танка направо
+
+        Parameters
+        ----------
+        angle : float, optional
+            угол поворота в радианах
+        """
+
         s = math.sin(angle)
         c = math.cos(angle)
         self.canvas.create_polygon(self.points, fill=BG_COLOR, outline=BG_COLOR)
@@ -89,10 +184,14 @@ class Tank():
 
 
     def delete_bullet(self):
+        """уменьшает количество выпущенных пуль на 1, когда пуля исчезает"""
+
         self.bullets -= 1
 
 
     def fire(self):
+        """производит выстрел, уничтожает пулю через 10s"""
+
         if self.bullets < 5:
             tank_bullet = Bullet(self.canvas, self.muzzle[0] + STEP * self.dx, self.muzzle[1] + STEP * self.dy,
                                  2 * self.dx, 2 * self.dy)
@@ -102,6 +201,10 @@ class Tank():
 
 
     def died(self):
+        """проверяет столкновения танка с пулей каждые 30ms;
+        в случае столкновения игра заканчивается
+        """
+
         for bull in bullets:
             if distance(self.O[0], self.O[1], bull.x, bull.y) <= bull.r + 15:
                 time.sleep(3)
@@ -110,52 +213,81 @@ class Tank():
 
 
     def press_forward(self, event):
+        """устанавливает индикатор того, что клавиша движения вперед нажата"""
+
         self.pressed['forward'] = True
 
 
     def release_forward(self, event):
+        """устанавливает индикатор того, что клавиша движения вперед не нажата"""
+
         self.pressed['forward'] = False
 
 
     def press_left(self, event):
+        """устанавливает индикатор того, что клавиша поворота влево нажата"""
+
         self.pressed['left'] = True
 
 
     def release_left(self, event):
+        """устанавливает индикатор того, что клавиша поворота влево не нажата"""
+
         self.pressed['left'] = False
 
 
     def press_backward(self, event):
+        """устанавливает индикатор того, что клавиша движения назад нажата"""
+
         self.pressed['backward'] = True
 
 
     def release_backward(self, event):
+        """устанавливает индикатор того, что клавиша движения назад не нажата"""
+
         self.pressed['backward'] = False
 
 
     def press_right(self, event):
+        """устанавливает индикатор того, что клавиша поворота вправо нажата"""
+
         self.pressed['right'] = True
 
 
     def release_right(self, event):
+        """устанавливает индикатор того, что клавиша поворота вправо не нажата"""
+
         self.pressed['right'] = False
 
 
     def press_fire(self, event):
+        """устанавливает индикатор того, что клавиша стрельбы нажата"""
+
         self.pressed['fire'] = True
 
 
     def release_fire(self, event):
+        """устанавливает индикатор того, что клавиша стрельбы не нажата"""
+
         self.pressed['fire'] = False
 
 
     def f(self):
+        """запускает метод fire(), если нажата клавиша стрельбы;
+        вызывает себя снова через 30ms
+        """
+
         if (self.pressed['fire']):
             self.fire()
         self.canvas.after(200, self.f)
 
 
     def move(self):
+        """запускает движение и поворот танка, если нажаты соответственные клавиши;
+        производит отрисовку танка;
+        вызывает себя снова через 30ms
+        """
+
         if not self.stopped:
             if (self.pressed['forward']):
                 self.move_forward()
@@ -181,12 +313,28 @@ class Tank():
 
 
     def start(self):
+        """вызывается при создании танка;
+        запускает методы f(), move(), died()
+        """
+
         self.f()
         self.move()
         self.died()
 
 
 class Tank1(Tank):
+    """Класс Tank1 - первый танк
+    наследуется от класса Tank
+
+    Управление
+    ----------
+    'W' - движение вперед
+    'A' - поворот налево
+    'S' - движение назад
+    'D' - поворот направо
+    'R' - стрельба
+    """
+
     def __init__(self, canvas, points, color=TANK_COLOR1):
         Tank.__init__(self, canvas, points, color)
         self.canvas.bind_all('<KeyPress-w>', self.press_forward)
@@ -202,6 +350,18 @@ class Tank1(Tank):
 
 
 class Tank2(Tank):
+    """Класс Tank2 - второй танк
+    наследуется от класса Tank
+
+    Управление
+    ----------
+    'Up' - движение вперед
+    'Left' - поворот налево
+    'Down' - движение назад
+    'Right' - поворот направо
+    'L' - стрельба
+    """
+
     def __init__(self, canvas, points, color=TANK_COLOR2):
         Tank.__init__(self, canvas, points, color)
         self.canvas.bind_all('<KeyPress-Up>', self.press_forward)
