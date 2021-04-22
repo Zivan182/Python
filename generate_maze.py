@@ -1,8 +1,16 @@
 from random import *
-from variables import *
+from constants import *
 
 
 def generate_maze(n,m):
+    """генерирует массив местоположений стен лабиринта
+
+    Parameters
+    ----------
+    n, m : int
+        размеры массива
+    """
+
     field = [[0 for i in range(m)] for i in range(n)]
     walls = [[[False, False] for i in range(m)] for i in range(n)]
     for i in range(n):
